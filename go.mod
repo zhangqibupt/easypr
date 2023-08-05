@@ -1,4 +1,4 @@
-module easycp
+module github.com/zhangqibuptse/easypr
 
 go 1.20
 
