@@ -120,8 +120,14 @@ func CreatePRLink(source, target string) (string, error) {
 
 func CreateCherryPickPRLink(source, target string, commits []string) (string, error) {
 	newBranchName := generateNewBranchName(source, target)
+	if branchExists(newBranchName) {
+		color.Yellow("cherry pick branch [%s] already exists, trying to delete it...", newBranchName)
+		if err := DeleteBranch(newBranchName); err != nil {
+			return "", err
+		}
+	}
 
-	color.Cyan("creating branch [%s] based on [%s]", source, target)
+	color.Cyan("creating branch [%s] based on [%s]", newBranchName, target)
 	out, err := execGit("checkout", "-b", newBranchName, target)
 	if err != nil {
 		color.Red("checkout -b %s error: %s %s", newBranchName, out, err)
@@ -136,13 +142,13 @@ func CreateCherryPickPRLink(source, target string, commits []string) (string, er
 		}
 	}
 
-	return generatePRLink(source, target)
+	return generatePRLink(newBranchName, target)
 }
 
 func generatePRLink(source, target string) (string, error) {
 	// push to remote
 	color.Cyan("pushing %s to remote", source)
-	out, err := execGit("push", "origin", fmt.Sprintf("%s:%s", source, source))
+	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", source, source))
 	if err != nil {
 		color.Red("push %s to remote error: %s %s", source, out, err)
 		return "", err
@@ -170,16 +176,19 @@ func CommitsBetween(source, target string) ([]string, error) {
 		color.Red("get commits between %s and %s error: %s %s", source, target, output, err)
 		return nil, err
 	}
-	color.Red("get commits between %s and %s output: %s", source, target, output)
 
-	// 解析输出结果
-	commits := strings.Split(string(output), "\n")
+	var commits []string
+	for _, line := range strings.Split(string(output), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		commits = append(commits, strings.Fields(line)[0])
+	}
 	sortedCommits := make([]string, len(commits))
 	for i, commit := range commits {
-		sortedCommits[len(commits)-1-i] = strings.Fields(commit)[0]
+		sortedCommits[len(commits)-1-i] = commit
 	}
 	color.Cyan("found %d commits between %s and %s", len(sortedCommits), source, target)
-	color.Cyan("commits: %v", sortedCommits)
 
 	return sortedCommits, nil
 }
@@ -189,13 +198,34 @@ func shortName(branch string) string {
 }
 
 func generateNewBranchName(source, target string) string {
-	baseBranchName := fmt.Sprintf("%s_to_%s", source, shortName(target))
-	branchName := baseBranchName
-	for suffix := 1; ; suffix++ {
-		_, err := execGit("rev-parse", "--verify", branchName)
-		if err != nil {
-			return branchName
-		}
-		branchName = fmt.Sprintf("%s_%d", baseBranchName, suffix)
+	branchName := fmt.Sprintf("%s_to_%s", source, shortName(target))
+	if len(branchName) > 200 {
+		branchName = branchName[:200]
 	}
+	return branchName
+}
+
+func Checkout(branch string) error {
+	out, err := execGit("checkout", shortName(branch))
+	if err != nil {
+		color.Red("checkout %s error: %s %s", branch, out, err)
+		return err
+	}
+	return nil
+}
+
+func DeleteBranch(branch string) error {
+	out, err := execGit("branch", "-D", branch)
+	if err != nil {
+		color.Red("delete branch %s error: %s %s", branch, out, err)
+		return err
+	}
+
+	color.Cyan("branch %s deleted", branch)
+	return nil
+}
+
+func branchExists(branch string) bool {
+	out, _ := execGit("rev-parse", "--verify", branch)
+	return strings.TrimSpace(out) != ""
 }

@@ -54,6 +54,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 		if err != nil {
 			return
 		}
+		defer git.Checkout(source)
 
 		commits, err := git.CommitsBetween(source, primaryBranch)
 		if err != nil {
