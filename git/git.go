@@ -28,10 +28,10 @@ func execGit(args ...string) (string, error) {
 }
 
 func CurrentBranch() (string, error) {
-	color.Cyan("getting current branch")
+	color.Cyan("Getting current branch")
 	out, err := execGit("symbolic-ref", "--short", "HEAD")
 	if err != nil {
-		color.Red("get current branch error: %s, %s", out, err)
+		color.Red("Get current branch error: %s, %s", out, err)
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
@@ -98,24 +98,24 @@ func Stash() error {
 func RemoteURL(remote string) (string, error) {
 	out, err := execGit("remote", "get-url", remote)
 	if err != nil {
-		color.Red("get remote url error: %s, %s", out, err)
+		color.Red("Get remote url error: %s, %s", out, err)
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
 }
 
 func CreatePRLink(source, target string) (string, error) {
-	color.Cyan("fetching %s from remote", target)
+	color.Cyan("Fetching %s from remote", target)
 	out, err := execGit("fetch", "origin")
 	if err != nil {
-		color.Red("fetch origin error: %s %s", out, err)
+		color.Red("Fetch origin error: %s %s", out, err)
 		return "", err
 	}
 
-	color.Cyan("rebasing to %s", target)
+	color.Cyan("Rebasing %s to %s", source, target)
 	out, err = execGit("rebase", target)
 	if err != nil {
-		color.Red("rebase error: %s %s", out, err)
+		color.Red("Rebase error: %s %s", out, err)
 		return "", err
 	}
 
@@ -126,19 +126,19 @@ func CreateCherryPickPRLink(source, target string, commits []string) (string, er
 	newBranchName := generateNewBranchName(source, target)
 
 	if exist := branchExists(newBranchName); exist {
-		color.Yellow("branch [%s] already exists, trying to recreate it", newBranchName)
+		color.Yellow("Branch %s already exists, trying to recreate it", newBranchName)
 		if err := DeleteBranch(newBranchName); err != nil {
 			return "", err
 		}
 	}
 
-	color.Cyan("creating branch [%s] based on [%s]", newBranchName, target)
+	color.Cyan("Creating branch %s based on %s", newBranchName, target)
 	if err := CreateBranch(newBranchName, target); err != nil {
 		return "", err
 	}
 
 	for _, commit := range commits {
-		color.Cyan("cherry picking %s to branch [%s]", commit, newBranchName)
+		color.Cyan("Cherry picking %s to branch %s", commit, newBranchName)
 		out, err := execGit("cherry-pick", commit)
 		if err != nil {
 			color.Red("cherry pick %s error: %s %s", commit, out, err)
@@ -192,7 +192,7 @@ func CommitsBetween(source, target string) ([]string, error) {
 	for i, commit := range commits {
 		sortedCommits[len(commits)-1-i] = commit
 	}
-	color.Cyan("found %d commits between %s and %s", len(sortedCommits), source, target)
+	color.Cyan("Found %d commits between %s and %s", len(sortedCommits), source, target)
 
 	return sortedCommits, nil
 }
