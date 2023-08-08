@@ -17,7 +17,7 @@ func execGit(args ...string) (string, error) {
 
 	if debug {
 		fmt.Printf("[git] git %s\n", strings.Join(args, " "))
-		fmt.Printf("[git] output: %s %s", output, err)
+		fmt.Printf("[git] output: %s %s\n", output, err)
 	}
 
 	if err != nil {
@@ -161,7 +161,6 @@ func generatePRLink(source, target string) (string, error) {
 	color.Cyan("generating pull request link")
 	out, err = RemoteURL("origin")
 	if err != nil {
-		color.Red("get remote url error: %s, %s", out, err)
 		return "", err
 	}
 
