@@ -13,7 +13,7 @@ var debug = false
 
 func execGit(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 
 	if debug {
 		fmt.Printf("[git] git %s\n", strings.Join(args, " "))
