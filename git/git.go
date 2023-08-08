@@ -16,7 +16,7 @@ func execGit(args ...string) (string, error) {
 	output, err := cmd.CombinedOutput()
 	if debug {
 		fmt.Printf("[git] git %s\n", strings.Join(args, " "))
-		fmt.Printf("[git] output: %s %s\n", output, err)
+		fmt.Printf("[git] output: %s %s\n", output)
 	}
 
 	return string(output), err
@@ -26,7 +26,7 @@ func CurrentBranch() (string, error) {
 	color.Cyan("Getting current branch")
 	out, err := execGit("symbolic-ref", "--short", "HEAD")
 	if err != nil {
-		color.Red("Get current branch error: %s, %s", out, err)
+		color.Red("Get current branch error: %s", out)
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
@@ -35,7 +35,7 @@ func CurrentBranch() (string, error) {
 func RemoteBranches() ([]string, error) {
 	out, err := execGit("branch", "-r")
 	if err != nil {
-		color.Red("Failed to fetch remote branches due to:%s, %s", out, err)
+		color.Red("Failed to fetch remote branches due to:%s", out)
 		return nil, err
 	}
 	branches := []string{}
@@ -74,7 +74,7 @@ func RemoteBranches() ([]string, error) {
 func HasUncommittedChanges() (bool, error) {
 	out, err := execGit("status", "-s")
 	if err != nil {
-		color.Red("Failed to check git status due to:%s, %s", out, err)
+		color.Red("Failed to check git status due to:%s", out)
 		return false, err
 	}
 
@@ -93,7 +93,7 @@ func Stash() error {
 func RemoteURL(remote string) (string, error) {
 	out, err := execGit("remote", "get-url", remote)
 	if err != nil {
-		color.Red("Get remote url error: %s, %s", out, err)
+		color.Red("Get remote url error: %s", out)
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
@@ -103,14 +103,14 @@ func CreatePRLink(source, target string) (string, error) {
 	color.Cyan("Fetching %s from remote", target)
 	out, err := execGit("fetch", "origin")
 	if err != nil {
-		color.Red("Fetch origin error: %s %s", out, err)
+		color.Red("Fetch origin error: %s", out)
 		return "", err
 	}
 
 	color.Cyan("Rebasing %s to %s", source, target)
 	out, err = execGit("rebase", target)
 	if err != nil {
-		color.Red("Rebase error: %s %s", out, err)
+		color.Red("Rebase error: %s", out)
 		return "", err
 	}
 
@@ -136,7 +136,7 @@ func CreateCherryPickPRLink(source, target string, commits []string) (string, er
 		color.Cyan("Cherry picking %s to branch %s", commit, newBranchName)
 		out, err := execGit("cherry-pick", commit)
 		if err != nil {
-			color.Red("cherry pick %s error: %s %s", commit, out, err)
+			color.Red("cherry pick %s error: %s", commit, out)
 			execGit("cherry-pick", "--abort")
 			return "", err
 		}
@@ -146,14 +146,14 @@ func CreateCherryPickPRLink(source, target string, commits []string) (string, er
 }
 
 func generatePRLink(source, target string) (string, error) {
-	color.Cyan("pushing %s to remote", source)
+	color.Cyan("Pushing %s to remote", source)
 	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", source, source))
 	if err != nil {
-		color.Red("push %s to remote error: %s %s", source, out, err)
+		color.Red("Push %s to remote error: %s", source, out)
 		return "", err
 	}
 
-	color.Cyan("generating pull request link")
+	color.Cyan("Generating pull request link")
 	out, err = RemoteURL("origin")
 	if err != nil {
 		return "", err
@@ -168,10 +168,9 @@ func generatePRLink(source, target string) (string, error) {
 }
 
 func CommitsBetween(source, target string) ([]string, error) {
-	cmd := exec.Command("git", "log", fmt.Sprintf("%s..%s", target, source), "--oneline")
-	output, err := cmd.Output()
+	output, err := execGit("log", fmt.Sprintf("%s..%s", target, source), "--oneline")
 	if err != nil {
-		color.Red("get commits between %s and %s error: %s %s", source, target, output, err)
+		color.Red("Get commits between %s and %s error: %s", source, target, output)
 		return nil, err
 	}
 
@@ -206,7 +205,7 @@ func generateNewBranchName(source, target string) string {
 func Checkout(branch string) error {
 	out, err := execGit("checkout", shortName(branch))
 	if err != nil {
-		color.Red("checkout %s error: %s %s", branch, out, err)
+		color.Red("checkout %s error: %s", branch, out)
 		return err
 	}
 	return nil
@@ -215,7 +214,7 @@ func Checkout(branch string) error {
 func DeleteBranch(branch string) error {
 	out, err := execGit("branch", "-D", branch)
 	if err != nil {
-		color.Red("failed to delete branch %s error: %s %s", branch, out, err)
+		color.Red("failed to delete branch %s error: %s", branch, out)
 		return err
 	}
 
@@ -230,7 +229,7 @@ func branchExists(branch string) bool {
 func CreateBranch(newBranch, baseBranch string) error {
 	out, err := execGit("checkout", "-b", newBranch, baseBranch)
 	if err != nil {
-		color.Red("failed to create branch %s error: %s %s", newBranch, out, err)
+		color.Red("failed to create branch %s error: %s", newBranch, out)
 		return err
 	}
 	return nil
