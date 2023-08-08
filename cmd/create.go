@@ -15,6 +15,7 @@ import (
 	"github.com/zhangqibuptse/easypr/git"
 )
 
+var debug = false
 var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Generate PRs across branches",
@@ -23,49 +24,70 @@ var createCmd = &cobra.Command{
 
 func CreateRun() func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
+		if debug {
+			git.EnableDebug()
+			color.Green("Debug mode enabled")
+		}
+
 		os.Chdir("/Users/qzhang/workspace/github/test_easypr")
-		color.Cyan("Checking uncommitted changes...")
-		if has, _ := git.HasUncommittedChanges(); has {
-			color.Red("There are uncommitted changes, please stash them first.")
-			return
-		}
 
-		color.Cyan("Fetching remote branche list...")
-		// check if origin is set
-		_, err := git.RemoteURL("origin")
+		// check if there is uncommitted changes
+		color.Cyan("Checking for uncommitted changes...")
+		hasChanage, err := git.HasUncommittedChanges()
 		if err != nil {
-			color.Red("Failed to get remote origin, run `git remote -v` to check if the origin has been set.")
+			return
+		}
+		if hasChanage {
+			color.Red("You have uncommitted changes, please commit or stash them before continue.")
 			return
 		}
 
+		// check if remote origin is set
+		color.Cyan("Fetching remote branche list...")
+		originUrl, err := git.RemoteURL("origin")
+		if err != nil {
+			return
+		}
+		if strings.TrimSpace(originUrl) == "" {
+			color.Red("Failed to get remote origin, run `git remote -v` to check if the 'origin' has been set.")
+			return
+		}
+
+		// get remote branches
 		branches, err := git.RemoteBranches()
 		if err != nil {
-			color.Red("Failed to get remote branches due to error: %s", err)
 			return
 		}
 
-		i, primaryBranch, err := (&promptui.Select{Label: "Select target branch", Items: branches, Searcher: searcher(branches), Size: 10}).Run()
+		if len(branches) == 0 {
+			color.Red("No remote branches found!")
+			return
+		}
+
+		// select target branch
+		i, targetBranch, err := (&promptui.Select{Label: "Select target branch", Items: branches, Searcher: searcher(branches), Size: 10}).Run()
 		if err != nil {
 			color.Red("Failed to select current branch due to error: %s", err)
 			return
 		}
 
-		source, err := git.CurrentBranch()
+		sourceBranch, err := git.CurrentBranch()
 		if err != nil {
 			return
 		}
-		defer git.Checkout(source)
+		defer git.Checkout(sourceBranch)
 
-		commits, err := git.CommitsBetween(source, primaryBranch)
+		commits, err := git.CommitsBetween(sourceBranch, targetBranch)
 		if err != nil {
 			return
 		}
 
 		if len(commits) == 0 {
-			color.Yellow("No commits between %s and %s, existing", source, primaryBranch)
+			color.Yellow("No diff commits between %s and %s, existing", sourceBranch, targetBranch)
 			return
 		}
 
+		// select cherry-pick branches
 		branches = append(branches[:i], branches[i+1:]...)
 		var allItems []*MultipleSelectItem
 		for _, item := range branches {
@@ -76,28 +98,29 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 
 		selected, err := multipleSelect(0, allItems)
 		if err != nil {
-			color.Red("Failed to select cherry-pick branches due to error: %s", err)
 			return
 		}
 
-		color.Cyan("Creating PR for primary branch %s...", primaryBranch)
-		link, err := git.CreatePRLink(source, primaryBranch)
+		color.Cyan("Creating PR for target branch %s...", targetBranch)
+		green := color.New(color.FgGreen).SprintFunc()
+		targetLink, err := git.CreatePRLink(sourceBranch, targetBranch)
 		if err != nil {
 			return
 		}
-		color.Green("Primary PR link: %s", link)
+		defer color.Cyan("PR to %s: %s", targetBranch, green(targetLink))
 
 		if len(selected) == 0 {
 			return
 		}
 
 		for _, target := range selected {
-			color.Cyan("Creating PR for branch %s...", target)
-			link, err := git.CreateCherryPickPRLink(source, target, commits)
+			color.Cyan("Creating cherry-pick PR for branch %s...", target)
+			link, err := git.CreateCherryPickPRLink(sourceBranch, target, commits)
 			if err != nil {
-				return
+				color.Red("Failed to create cherry-pick PR for branch %s due to error: %s", target)
+				continue
 			}
-			color.Green("PR link to %s: %s", target, link)
+			defer color.Cyan("Cherry-Pick PR to %s: %s", target, green(link))
 		}
 	}
 }
@@ -150,6 +173,7 @@ func multipleSelect(selectedPos int, items []*MultipleSelectItem) ([]string, err
 
 	selectionIdx, _, err := prompt.Run()
 	if err != nil {
+		color.Red("Failed to select cherry-pick branches due to %v", err)
 		return nil, err
 	}
 
@@ -172,5 +196,6 @@ func multipleSelect(selectedPos int, items []*MultipleSelectItem) ([]string, err
 }
 
 func init() {
+	createCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Print debug messages")
 	rootCmd.AddCommand(createCmd)
 }

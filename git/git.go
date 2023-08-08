@@ -9,7 +9,24 @@ import (
 	"github.com/fatih/color"
 )
 
-// 获取当前分支
+var debug = false
+
+func execGit(args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	output, err := cmd.Output()
+
+	if debug {
+		fmt.Printf("[git] git %s\n", strings.Join(args, " "))
+		fmt.Printf("[git] output: %s %s", output, err)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(output), nil
+}
+
 func CurrentBranch() (string, error) {
 	color.Cyan("getting current branch")
 	out, err := execGit("symbolic-ref", "--short", "HEAD")
@@ -20,10 +37,10 @@ func CurrentBranch() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// 获取远程分支列表
 func RemoteBranches() ([]string, error) {
 	out, err := execGit("branch", "-r")
 	if err != nil {
+		color.Red("Failed to fetch remote branches due to:%s, %s", out, err)
 		return nil, err
 	}
 	branches := []string{}
@@ -31,16 +48,12 @@ func RemoteBranches() ([]string, error) {
 	lines := strings.Split(string(out), "\n")
 
 	for _, line := range lines {
-		// 只包含origin/开头的分支
 		if strings.HasPrefix(strings.TrimSpace(line), "origin/") {
 			branches = append(branches, strings.TrimSpace(line))
 		}
 	}
-	// 构造优先级分支slice
 	priorityBranches := []string{}
-	// 构造非优先级分支slice
 	otherBranches := []string{}
-	// primary branch
 	topBranches := []string{}
 
 	for _, branch := range branches {
@@ -53,37 +66,27 @@ func RemoteBranches() ([]string, error) {
 		}
 	}
 
-	// 对优先级分支排序
 	sort.Slice(priorityBranches, func(i, j int) bool {
 		return strings.Compare(priorityBranches[i], priorityBranches[j]) > 0
 	})
 
-	// 合并
 	branches = append(topBranches, priorityBranches...)
 	branches = append(branches, otherBranches...)
 
 	return branches, nil
-
 }
 
-// 执行git命令
-func execGit(args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	output, err := cmd.Output()
+func HasUncommittedChanges() (bool, error) {
+	out, err := execGit("status", "-s")
 	if err != nil {
-		return "", err
+		color.Red("Failed to check git status due to:%s, %s", out, err)
+		return false, err
 	}
 
-	return string(output), nil
-}
-
-// 检查是否有未提交的修改
-func HasUncommittedChanges() (bool, string) {
-	out, _ := execGit("status", "-s")
-	if out != "" {
-		return true, out
+	if strings.TrimSpace(out) != "" {
+		return true, nil
 	}
-	return false, ""
+	return false, nil
 }
 
 // stash 未提交的修改
@@ -95,6 +98,7 @@ func Stash() error {
 func RemoteURL(remote string) (string, error) {
 	out, err := execGit("remote", "get-url", remote)
 	if err != nil {
+		color.Red("get remote url error: %s, %s", out, err)
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
@@ -120,24 +124,25 @@ func CreatePRLink(source, target string) (string, error) {
 
 func CreateCherryPickPRLink(source, target string, commits []string) (string, error) {
 	newBranchName := generateNewBranchName(source, target)
-	if branchExists(newBranchName) {
-		color.Yellow("cherry pick branch [%s] already exists, trying to delete it...", newBranchName)
+
+	if exist := branchExists(newBranchName); exist {
+		color.Yellow("branch [%s] already exists, trying to recreate it", newBranchName)
 		if err := DeleteBranch(newBranchName); err != nil {
 			return "", err
 		}
 	}
 
 	color.Cyan("creating branch [%s] based on [%s]", newBranchName, target)
-	out, err := execGit("checkout", "-b", newBranchName, target)
-	if err != nil {
-		color.Red("checkout -b %s error: %s %s", newBranchName, out, err)
+	if err := CreateBranch(newBranchName, target); err != nil {
 		return "", err
 	}
-	color.Cyan("cherry picking %d commits to %s", len(commits), newBranchName)
+
 	for _, commit := range commits {
-		out, err = execGit("cherry-pick", commit)
+		color.Cyan("cherry picking %s to branch [%s]", commit, newBranchName)
+		out, err := execGit("cherry-pick", commit)
 		if err != nil {
 			color.Red("cherry pick %s error: %s %s", commit, out, err)
+			execGit("cherry-pick", "--abort")
 			return "", err
 		}
 	}
@@ -146,7 +151,6 @@ func CreateCherryPickPRLink(source, target string, commits []string) (string, er
 }
 
 func generatePRLink(source, target string) (string, error) {
-	// push to remote
 	color.Cyan("pushing %s to remote", source)
 	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", source, source))
 	if err != nil {
@@ -217,15 +221,27 @@ func Checkout(branch string) error {
 func DeleteBranch(branch string) error {
 	out, err := execGit("branch", "-D", branch)
 	if err != nil {
-		color.Red("delete branch %s error: %s %s", branch, out, err)
+		color.Red("failed to delete branch %s error: %s %s", branch, out, err)
 		return err
 	}
 
-	color.Cyan("branch %s deleted", branch)
 	return nil
 }
 
 func branchExists(branch string) bool {
 	out, _ := execGit("rev-parse", "--verify", branch)
 	return strings.TrimSpace(out) != ""
+}
+
+func CreateBranch(newBranch, baseBranch string) error {
+	out, err := execGit("checkout", "-b", newBranch, baseBranch)
+	if err != nil {
+		color.Red("failed to create branch %s error: %s %s", newBranch, out, err)
+		return err
+	}
+	return nil
+}
+
+func EnableDebug() {
+	debug = true
 }
