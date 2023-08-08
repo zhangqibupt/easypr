@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"net/url"
 	"os/exec"
 	"sort"
 	"strings"
@@ -114,14 +115,14 @@ func CreatePRLink(source, target string) (string, error) {
 		return "", err
 	}
 
-	return generatePRLink(source, target)
+	return generatePRLink(source, target, false)
 }
 
 func CreateCherryPickPRLink(source, target string, commits []string) (string, error) {
 	newBranchName := generateNewBranchName(source, target)
 
 	if exist := branchExists(newBranchName); exist {
-		color.Yellow("Branch %s already exists, trying to recreate it", newBranchName)
+		color.Cyan("Branch %s already exists, trying to recreate it", newBranchName)
 		if err := DeleteBranch(newBranchName); err != nil {
 			return "", err
 		}
@@ -142,10 +143,10 @@ func CreateCherryPickPRLink(source, target string, commits []string) (string, er
 		}
 	}
 
-	return generatePRLink(newBranchName, target)
+	return generatePRLink(newBranchName, target, true)
 }
 
-func generatePRLink(source, target string) (string, error) {
+func generatePRLink(source, target string, isCherryPick bool) (string, error) {
 	color.Cyan("Pushing %s to remote", source)
 	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", source, source))
 	if err != nil {
@@ -163,8 +164,18 @@ func generatePRLink(source, target string) (string, error) {
 		out = strings.Replace(out, "git@", "https://", 1)
 		out = strings.Replace(out, ":", "/", 1)
 	}
-	out = strings.Replace(out, ".git", "", 1)
-	return fmt.Sprintf("%s/compare/%s...%s", out, shortName(target), source), nil
+	baseURL := strings.Replace(out, ".git", "", 1)
+
+	labels := []string{shortName(target)}
+	if isCherryPick {
+		labels = append(labels, "CherryPick")
+	}
+
+	fullURL := fmt.Sprintf("%s/compare/%s...%s?quick_pull=1&labels=%s", baseURL, shortName(target), source, strings.Join(labels, ","))
+	if isCherryPick {
+		fullURL = fmt.Sprintf("%s&title=%s", fullURL, url.QueryEscape("CherryPick#"+source))
+	}
+	return fullURL, nil
 }
 
 func CommitsBetween(source, target string) ([]string, error) {

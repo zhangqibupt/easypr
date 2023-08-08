@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/spf13/cobra"
+	"strings"
 
 	"github.com/manifoldco/promptui"
 
@@ -98,7 +97,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 			return
 		}
 
-		color.Green("Creating Pull Request for target branch %s...", targetBranch)
+		color.Green("Creating Pull Request to %s...", targetBranch)
 		targetLink, err := git.CreatePRLink(sourceBranch, targetBranch)
 		if err != nil {
 			return
@@ -106,7 +105,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 
 		if len(selected) > 0 {
 			for _, target := range selected {
-				color.Green("Creating cherry-pick Pull Request for branch %s...", target)
+				color.Green("Creating cherry-pick Pull Request to %s...", target)
 				link, err := git.CreateCherryPickPRLink(sourceBranch, target, commits)
 				if err != nil {
 					color.Red("Failed to create cherry-pick Pull Request for branch %s, skipping...", target)
