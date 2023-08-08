@@ -14,17 +14,12 @@ var debug = false
 func execGit(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	output, err := cmd.CombinedOutput()
-
 	if debug {
 		fmt.Printf("[git] git %s\n", strings.Join(args, " "))
 		fmt.Printf("[git] output: %s %s\n", output, err)
 	}
 
-	if err != nil {
-		return "", err
-	}
-
-	return string(output), nil
+	return string(output), err
 }
 
 func CurrentBranch() (string, error) {
