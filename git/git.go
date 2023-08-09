@@ -17,7 +17,7 @@ func execGit(args ...string) (string, error) {
 	output, err := cmd.CombinedOutput()
 	if debug {
 		fmt.Printf("[git] git %s\n", strings.Join(args, " "))
-		fmt.Printf("[git] output: %s %s\n", output)
+		fmt.Printf("[git] output: %s\n", output)
 	}
 
 	return string(output), err
@@ -30,7 +30,7 @@ func CurrentBranch() (string, error) {
 		color.Red("Get current branch error: %s", out)
 		return "", err
 	}
-	return strings.TrimSpace(string(out)), nil
+	return strings.TrimSpace(out), nil
 }
 
 func RemoteBranches() ([]string, error) {
@@ -39,19 +39,16 @@ func RemoteBranches() ([]string, error) {
 		color.Red("Failed to fetch remote branches due to:%s", out)
 		return nil, err
 	}
-	branches := []string{}
+	var branches []string
 
-	lines := strings.Split(string(out), "\n")
+	lines := strings.Split(out, "\n")
 
 	for _, line := range lines {
 		if strings.HasPrefix(strings.TrimSpace(line), "origin/") {
 			branches = append(branches, strings.TrimSpace(line))
 		}
 	}
-	priorityBranches := []string{}
-	otherBranches := []string{}
-	topBranches := []string{}
-
+	var priorityBranches, otherBranches, topBranches []string
 	for _, branch := range branches {
 		if strings.HasPrefix(branch, "origin/V_") {
 			priorityBranches = append(priorityBranches, branch)
@@ -72,6 +69,28 @@ func RemoteBranches() ([]string, error) {
 	return branches, nil
 }
 
+func OtherLocalBranches() ([]string, error) {
+	out, err := execGit("branch")
+	if err != nil {
+		color.Red("Failed to fetch local branches due to:%s", out)
+		return nil, err
+	}
+	var branches []string
+
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if strings.HasPrefix(strings.TrimSpace(line), "* ") {
+			continue
+		}
+
+		branches = append(branches, strings.TrimSpace(line))
+	}
+	return branches, nil
+}
+
 func HasUncommittedChanges() (bool, error) {
 	out, err := execGit("status", "-s")
 	if err != nil {
@@ -85,19 +104,13 @@ func HasUncommittedChanges() (bool, error) {
 	return false, nil
 }
 
-// stash 未提交的修改
-func Stash() error {
-	_, err := execGit("stash")
-	return err
-}
-
 func RemoteURL(remote string) (string, error) {
 	out, err := execGit("remote", "get-url", remote)
 	if err != nil {
 		color.Red("Get remote url error: %s", out)
 		return "", err
 	}
-	return strings.TrimSpace(string(out)), nil
+	return strings.TrimSpace(out), nil
 }
 
 func CreatePRLink(source, target string) (string, error) {
@@ -138,12 +151,43 @@ func CreateCherryPickPRLink(source, target string, commits []string) (string, er
 		out, err := execGit("cherry-pick", commit)
 		if err != nil {
 			color.Red("cherry pick %s error: %s", commit, out)
-			execGit("cherry-pick", "--abort")
+			_, _ = execGit("cherry-pick", "--abort")
 			return "", err
 		}
 	}
 
 	return generatePRLink(newBranchName, target, true)
+}
+
+func RecreateCPBranch(localCPBranch string, commits []string) error {
+	cpRemoteBaseBranch := fmt.Sprintf("origin/%s", strings.Split(localCPBranch, CherryPickPlaceholder)[1])
+
+	color.Cyan("Recreating branch %s based on %s", localCPBranch, cpRemoteBaseBranch)
+	if err := DeleteBranch(localCPBranch); err != nil {
+		return err
+	}
+
+	if err := CreateBranch(localCPBranch, cpRemoteBaseBranch); err != nil {
+		return err
+	}
+
+	for _, commit := range commits {
+		color.Cyan("Cherry picking %s to branch %s", commit, localCPBranch)
+		out, err := execGit("cherry-pick", commit)
+		if err != nil {
+			color.Red("cherry pick %s error: %s", commit, out)
+			_, _ = execGit("cherry-pick", "--abort")
+			return err
+		}
+	}
+
+	color.Cyan("Pushing %s to remote", localCPBranch)
+	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", localCPBranch, localCPBranch))
+	if err != nil {
+		color.Red("Push %s to remote error: %s", localCPBranch, out)
+		return err
+	}
+	return nil
 }
 
 func generatePRLink(source, target string, isCherryPick bool) (string, error) {
@@ -186,7 +230,7 @@ func CommitsBetween(source, target string) ([]string, error) {
 	}
 
 	var commits []string
-	for _, line := range strings.Split(string(output), "\n") {
+	for _, line := range strings.Split(output, "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
@@ -206,11 +250,18 @@ func shortName(branch string) string {
 }
 
 func generateNewBranchName(source, target string) string {
-	branchName := fmt.Sprintf("%s_to_%s", source, shortName(target))
+	prefix := CPBranchPrefix(source)
+	branchName := fmt.Sprintf("%s%s", prefix, shortName(target))
 	if len(branchName) > 200 {
 		branchName = branchName[:200]
 	}
 	return branchName
+}
+
+var CherryPickPlaceholder = "_cp_to_"
+
+func CPBranchPrefix(source string) string {
+	return fmt.Sprintf("%s%s", source, CherryPickPlaceholder)
 }
 
 func Checkout(branch string) error {
@@ -233,8 +284,11 @@ func DeleteBranch(branch string) error {
 }
 
 func branchExists(branch string) bool {
-	out, _ := execGit("rev-parse", "--verify", branch)
-	return strings.TrimSpace(out) != ""
+	_, err := execGit("rev-parse", "--verify", branch)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func CreateBranch(newBranch, baseBranch string) error {

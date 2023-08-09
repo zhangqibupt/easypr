@@ -24,7 +24,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		if debug {
 			git.EnableDebug()
-			color.Green("Debug mode enabled")
+			color.Yellow("Debug mode enabled")
 		}
 
 		// Check for uncommitted changes
@@ -71,7 +71,9 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 		if err != nil {
 			return
 		}
-		defer git.Checkout(sourceBranch)
+		defer func() {
+			_ = git.Checkout(sourceBranch)
+		}()
 
 		commits, err := git.CommitsBetween(sourceBranch, targetBranch)
 		if err != nil {
@@ -92,12 +94,12 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 			})
 		}
 
-		selected, err := multipleSelect(0, allItems)
+		selected, err := multipleSelect(1, allItems, "? Select remote target branches for cherry-picking:")
 		if err != nil {
 			return
 		}
 
-		color.Green("Creating Pull Request to %s...", targetBranch)
+		color.Yellow("Creating Pull Request to %s...", targetBranch)
 		targetLink, err := git.CreatePRLink(sourceBranch, targetBranch)
 		if err != nil {
 			return
@@ -105,17 +107,16 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 
 		if len(selected) > 0 {
 			for _, target := range selected {
-				color.Green("Creating cherry-pick Pull Request to %s...", target)
+				color.Yellow("Creating cherry-pick Pull Request to %s...", target)
 				link, err := git.CreateCherryPickPRLink(sourceBranch, target, commits)
 				if err != nil {
 					color.Red("Failed to create cherry-pick Pull Request for branch %s, skipping...", target)
 					continue
 				}
-				defer color.Cyan("Cherry-Pick Pull Request to %s: %s", target, color.GreenString(link))
+				defer color.Cyan("Cherry-Pick PR to %s: %s", target, color.GreenString(link))
 			}
-
 		}
-		color.Cyan("Pull Request to %s: %s", targetBranch, color.GreenString(targetLink))
+		color.Cyan("PR to %s: %s", targetBranch, color.GreenString(targetLink))
 	}
 }
 
@@ -126,19 +127,13 @@ func searcher(branches []string) func(input string, index int) bool {
 	}
 }
 
-var template = &promptui.SelectTemplates{
-	Label:    `? Select cherry-pick branch:`,
-	Active:   `→ {{if .IsSelected}}{{ .ID | green }} {{ "✔" | green }} {{else}}{{ .ID }}{{end}}`,
-	Inactive: `  {{if .IsSelected}}{{ .ID | green }} {{ "✔" | green }} {{else}}{{ .ID }}{{end}}`,
-}
-
 type MultipleSelectItem struct {
 	ID         string
 	IsSelected bool
 }
 
 // multipleSelect() prompts user to select one or more items in the given slice
-func multipleSelect(selectedPos int, items []*MultipleSelectItem) ([]string, error) {
+func multipleSelect(selectedPos int, items []*MultipleSelectItem, label string) ([]string, error) {
 	// Always prepend a "Done" item to the slice if it doesn't
 	// already exist.
 	const doneID = "Done"
@@ -150,9 +145,13 @@ func multipleSelect(selectedPos int, items []*MultipleSelectItem) ([]string, err
 	}
 
 	prompt := promptui.Select{
-		Label:        "? Select target branches for cherry-picking:",
-		Items:        items,
-		Templates:    template,
+		//Label: label,
+		Items: items,
+		Templates: &promptui.SelectTemplates{
+			Label:    label,
+			Active:   `→ {{if .IsSelected}}{{ .ID | green }} {{ "✔" | green }} {{else}}{{ .ID }}{{end}}`,
+			Inactive: `  {{if .IsSelected}}{{ .ID | green }} {{ "✔" | green }} {{else}}{{ .ID }}{{end}}`,
+		},
 		Size:         10,
 		CursorPos:    selectedPos,
 		HideSelected: true,
@@ -175,7 +174,7 @@ func multipleSelect(selectedPos int, items []*MultipleSelectItem) ([]string, err
 
 	if chosenItem.ID != doneID {
 		chosenItem.IsSelected = !chosenItem.IsSelected
-		return multipleSelect(selectionIdx, items)
+		return multipleSelect(selectionIdx, items, label)
 	}
 
 	// If the user selected the "Done" item, return all selected branches.
