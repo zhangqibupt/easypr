@@ -186,8 +186,3 @@ func multipleSelect(selectedPos int, items []*MultipleSelectItem, label string) 
 	}
 	return selectedBranches, nil
 }
-
-func init() {
-	createCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Print debug messages")
-	rootCmd.AddCommand(createCmd)
-}

@@ -136,8 +136,3 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 		}
 	}
 }
-
-func init() {
-	syncCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Print debug messages")
-	rootCmd.AddCommand(syncCmd)
-}
