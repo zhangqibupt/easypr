@@ -205,8 +205,8 @@ func generatePRLink(source, target string, isCherryPick bool) (string, error) {
 	}
 
 	if strings.HasPrefix(out, "git@") {
-		out = strings.Replace(out, "git@", "https://", 1)
 		out = strings.Replace(out, ":", "/", 1)
+		out = strings.Replace(out, "git@", "https://", 1)
 	}
 	baseURL := strings.Replace(out, ".git", "", 1)
 
