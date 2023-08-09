@@ -212,7 +212,7 @@ func generatePRLink(source, target string, isCherryPick bool) (string, error) {
 
 	labels := []string{shortName(target)}
 	if isCherryPick {
-		labels = append(labels, "CherryPick")
+		labels = append(labels, "cherry-pick")
 	}
 
 	fullURL := fmt.Sprintf("%s/compare/%s...%s?quick_pull=1&labels=%s", baseURL, shortName(target), source, strings.Join(labels, ","))
