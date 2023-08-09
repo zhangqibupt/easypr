@@ -182,9 +182,13 @@ func RecreateCPBranch(localCPBranch string, commits []string) error {
 	}
 
 	color.Cyan("Pushing %s to remote", localCPBranch)
-	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", localCPBranch, localCPBranch))
+	return ForcePush(localCPBranch)
+}
+
+func ForcePush(branch string) error {
+	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", branch, branch))
 	if err != nil {
-		color.Red("Push %s to remote error: %s", localCPBranch, out)
+		color.Red("Push %s to remote error: %s", branch, out)
 		return err
 	}
 	return nil
@@ -192,14 +196,12 @@ func RecreateCPBranch(localCPBranch string, commits []string) error {
 
 func generatePRLink(source, target string, isCherryPick bool) (string, error) {
 	color.Cyan("Pushing %s to remote", source)
-	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", source, source))
-	if err != nil {
-		color.Red("Push %s to remote error: %s", source, out)
+	if err := ForcePush(source); err != nil {
 		return "", err
 	}
 
 	color.Cyan("Generating pull request link")
-	out, err = RemoteURL("origin")
+	out, err := RemoteURL("origin")
 	if err != nil {
 		return "", err
 	}
@@ -302,4 +304,5 @@ func CreateBranch(newBranch, baseBranch string) error {
 
 func EnableDebug() {
 	debug = true
+	color.Yellow("Debug mode enabled")
 }

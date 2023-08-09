@@ -22,11 +22,6 @@ var createCmd = &cobra.Command{
 
 func CreateRun() func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
-		if debug {
-			git.EnableDebug()
-			color.Yellow("Debug mode enabled")
-		}
-
 		// Check for uncommitted changes
 		color.Cyan("Checking for uncommitted changes")
 		hasChanges, err := git.HasUncommittedChanges()

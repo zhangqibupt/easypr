@@ -20,11 +20,6 @@ var syncCmd = &cobra.Command{
 
 func SyncRun() func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
-		if debug {
-			git.EnableDebug()
-			color.Yellow("Debug mode enabled")
-		}
-
 		// Check for uncommitted changes
 		color.Cyan("Checking for uncommitted changes")
 		hasChanges, err := git.HasUncommittedChanges()
@@ -33,6 +28,19 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 		}
 		if hasChanges {
 			color.Red("Uncommitted changes found. Please commit or stash before continuing.")
+			return
+		}
+
+		// Force push current branch to remote
+		sourceBranch, err := git.CurrentBranch()
+		if err != nil {
+			return
+		}
+		defer func() {
+			_ = git.Checkout(sourceBranch)
+		}()
+
+		if err := git.ForcePush(sourceBranch); err != nil {
 			return
 		}
 
@@ -70,14 +78,6 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 			color.Red("Failed to select target branch: %s", err)
 			return
 		}
-
-		sourceBranch, err := git.CurrentBranch()
-		if err != nil {
-			return
-		}
-		defer func() {
-			_ = git.Checkout(sourceBranch)
-		}()
 
 		commits, err := git.CommitsBetween(sourceBranch, targetBranch)
 		if err != nil {
