@@ -11,14 +11,14 @@ import (
 	"github.com/zhangqibuptse/easypr/git"
 )
 
-var updateCmd = &cobra.Command{
+var syncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Sync new commits to cherry-pick branches.",
 	Long:  "Sync new commits to cherry-pick branches. \nIt is used when you have created cherry-pick Pull Requests through 'create' command, you made some new commits and you want to sync these commits to these cherry-pick branches.",
-	Run:   UpdateRun(),
+	Run:   SyncRun(),
 }
 
-func UpdateRun() func(cmd *cobra.Command, args []string) {
+func SyncRun() func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		if debug {
 			git.EnableDebug()
@@ -138,6 +138,6 @@ func UpdateRun() func(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	updateCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Print debug messages")
-	rootCmd.AddCommand(updateCmd)
+	syncCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Print debug messages")
+	rootCmd.AddCommand(syncCmd)
 }
