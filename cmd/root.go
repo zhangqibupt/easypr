@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.freewheel.tv/qzhang/fwpr/git"
+	"github.freewheel.tv/qzhang/fwpr/lib"
 )
 
 var (
@@ -16,7 +16,7 @@ Join our slack channel to submit issues and get supported #kof-user-group https:
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if debug {
-				git.EnableDebug()
+				lib.EnableDebug()
 			}
 		},
 	}
@@ -35,8 +35,11 @@ func Execute() error {
 	completion.Hidden = true
 
 	rootCmd.AddCommand(completion)
+
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(upgradeCmd)
+
 	return rootCmd.Execute()
 }

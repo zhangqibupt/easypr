@@ -8,21 +8,22 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.freewheel.tv/qzhang/fwpr/git"
+	"github.freewheel.tv/qzhang/fwpr/lib"
 )
 
 var syncCmd = &cobra.Command{
-	Use:   "sync",
-	Short: "Sync new commits to cherry-pick branches.",
-	Long:  "Sync new commits to cherry-pick branches. \nIt is used when you have created cherry-pick Pull Requests through 'create' command, you made some new commits and you want to sync these commits to these cherry-pick branches.",
-	Run:   SyncRun(),
+	Use:     "sync",
+	Short:   "Sync new commits to cherry-pick branches.",
+	Long:    "Sync new commits to cherry-pick branches. \nIt is used when you have created cherry-pick Pull Requests through 'create' command, you made some new commits and you want to sync these commits to these cherry-pick branches.",
+	Aliases: []string{"s"},
+	Run:     SyncRun(),
 }
 
 func SyncRun() func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		// Check for uncommitted changes
 		color.Cyan("Checking for uncommitted changes")
-		hasChanges, err := git.HasUncommittedChanges()
+		hasChanges, err := lib.HasUncommittedChanges()
 		if err != nil {
 			return
 		}
@@ -32,21 +33,21 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 		}
 
 		// Force push current branch to remote
-		sourceBranch, err := git.CurrentBranch()
+		sourceBranch, err := lib.CurrentBranch()
 		if err != nil {
 			return
 		}
 		defer func() {
-			_ = git.Checkout(sourceBranch)
+			_ = lib.Checkout(sourceBranch)
 		}()
 
-		if err := git.ForcePush(sourceBranch); err != nil {
+		if err := lib.ForcePush(sourceBranch); err != nil {
 			return
 		}
 
 		// Fetch remote branch list
 		color.Cyan("Fetching remote branch list")
-		originURL, err := git.RemoteURL("origin")
+		originURL, err := lib.RemoteURL("origin")
 		if err != nil {
 			return
 		}
@@ -56,7 +57,7 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 		}
 
 		// Fetch remote branches
-		branches, err := git.RemoteBranches()
+		branches, err := lib.RemoteBranches()
 		if err != nil {
 			return
 		}
@@ -79,7 +80,7 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 			return
 		}
 
-		commits, err := git.CommitsBetween(sourceBranch, targetBranch)
+		commits, err := lib.CommitsBetween(sourceBranch, targetBranch)
 		if err != nil {
 			return
 		}
@@ -89,14 +90,14 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 			return
 		}
 
-		localBranches, err := git.OtherLocalBranches()
+		localBranches, err := lib.OtherLocalBranches()
 		if err != nil {
 			return
 		}
 
 		// Find the cherry-pick branches
 		var cherryPickBranches []string
-		var cherryPickBranchPrefix = git.CPBranchPrefix(sourceBranch)
+		var cherryPickBranchPrefix = lib.CPBranchPrefix(sourceBranch)
 		color.Cyan("Checking for local cherry-pick branches with prefix '%s'", cherryPickBranchPrefix)
 		for _, branch := range localBranches {
 			if strings.HasPrefix(branch, cherryPickBranchPrefix) {
@@ -127,7 +128,7 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 
 		for _, target := range selected {
 			color.Yellow("Syncing new commits to %s...", target)
-			err := git.RecreateCPBranch(target, commits)
+			err := lib.RecreateCPBranch(target, commits)
 			if err != nil {
 				color.Red("Failed to create cherry-pick Pull Request for branch %s, skipping...", target)
 				continue

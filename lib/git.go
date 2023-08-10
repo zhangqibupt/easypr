@@ -1,4 +1,4 @@
-package git
+package lib
 
 import (
 	"fmt"
@@ -221,7 +221,19 @@ func generatePRLink(source, target string, isCherryPick bool) (string, error) {
 	if isCherryPick {
 		fullURL = fmt.Sprintf("%s&title=%s", fullURL, url.QueryEscape("CherryPick#"+source))
 	}
+
+	fullURL = fillInAssignees(fullURL)
+
 	return fullURL, nil
+}
+
+func fillInAssignees(fullURL string) string {
+	c, _ := LoadConfig()
+	if c == nil || len(c.Assignees) == 0 {
+		return fullURL
+	}
+
+	return fmt.Sprintf("%s&assignees=%s", fullURL, strings.Join(c.Assignees, ","))
 }
 
 func generateLabel(target string) string {
@@ -315,4 +327,14 @@ func CreateBranch(newBranch, baseBranch string) error {
 func EnableDebug() {
 	debug = true
 	color.Yellow("Debug mode enabled")
+}
+
+func TopLevelDirectory() (string, error) {
+	director, err := execGit("rev-parse", "--show-toplevel")
+	if err != nil {
+		color.Red("failed to get git repo information: %s", director)
+		return "", err
+	}
+	return strings.TrimSpace(director), nil
+
 }

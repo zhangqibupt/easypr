@@ -7,8 +7,9 @@ import (
 )
 
 var upgradeCmd = &cobra.Command{
-	Use:   "upgrade",
-	Short: "Upgrade fwpr to the latest version",
+	Use:     "upgrade",
+	Short:   "Upgrade fwpr to the latest version",
+	Aliases: []string{"u"},
 	Run: func(cmd *cobra.Command, args []string) {
 		performUpgrade()
 	},

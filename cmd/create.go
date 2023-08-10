@@ -11,21 +11,23 @@ import (
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 
-	"github.freewheel.tv/qzhang/fwpr/git"
+	"github.freewheel.tv/qzhang/fwpr/lib"
 )
 
 var debug = false
 var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Generate PRs across branches",
-	Run:   CreateRun(),
+	Use:     "create",
+	Short:   "Generate multiple Pull Requests to multiple branches",
+	Aliases: []string{"c"},
+
+	Run: CreateRun(),
 }
 
 func CreateRun() func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		// Check for uncommitted changes
 		color.Cyan("Checking for uncommitted changes")
-		hasChanges, err := git.HasUncommittedChanges()
+		hasChanges, err := lib.HasUncommittedChanges()
 		if err != nil {
 			return
 		}
@@ -36,7 +38,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 
 		// Fetch remote branch list
 		color.Cyan("Fetching remote branch list")
-		originURL, err := git.RemoteURL("origin")
+		originURL, err := lib.RemoteURL("origin")
 		if err != nil {
 			return
 		}
@@ -46,7 +48,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 		}
 
 		// Fetch remote branches
-		branches, err := git.RemoteBranches()
+		branches, err := lib.RemoteBranches()
 		if err != nil {
 			return
 		}
@@ -63,15 +65,15 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 			return
 		}
 
-		sourceBranch, err := git.CurrentBranch()
+		sourceBranch, err := lib.CurrentBranch()
 		if err != nil {
 			return
 		}
 		defer func() {
-			_ = git.Checkout(sourceBranch)
+			_ = lib.Checkout(sourceBranch)
 		}()
 
-		commits, err := git.CommitsBetween(sourceBranch, targetBranch)
+		commits, err := lib.CommitsBetween(sourceBranch, targetBranch)
 		if err != nil {
 			return
 		}
@@ -96,7 +98,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 		}
 
 		color.Yellow("Creating Pull Request to %s...", targetBranch)
-		targetLink, err := git.CreatePRLink(sourceBranch, targetBranch)
+		targetLink, err := lib.CreatePRLink(sourceBranch, targetBranch)
 		if err != nil {
 			return
 		}
@@ -104,7 +106,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 		if len(selected) > 0 {
 			for _, target := range selected {
 				color.Yellow("Creating cherry-pick Pull Request to %s...", target)
-				link, err := git.CreateCherryPickPRLink(sourceBranch, target, commits)
+				link, err := lib.CreateCherryPickPRLink(sourceBranch, target, commits)
 				if err != nil {
 					color.Red("Failed to create cherry-pick Pull Request for branch %s, skipping...", target)
 					continue
