@@ -17,7 +17,7 @@ import (
 var debug = false
 var createCmd = &cobra.Command{
 	Use:     "create",
-	Short:   "Generate multiple Pull Requests to multiple branches",
+	Short:   "Generate pull requests to multiple branches",
 	Aliases: []string{"c"},
 
 	Run: CreateRun(),
