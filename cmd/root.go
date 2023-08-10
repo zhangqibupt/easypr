@@ -24,12 +24,16 @@ func init() {
 
 // Execute executes the root command.
 func Execute() error {
+	cobra.EnableCommandSorting = false
+
 	completion := completionCommand()
 	// mark completion hidden
 	completion.Hidden = true
+
 	rootCmd.AddCommand(completion)
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.Flags().SortFlags = false
 
 	return rootCmd.Execute()
 }
