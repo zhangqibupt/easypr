@@ -8,9 +8,8 @@ import (
 
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade",
-	Short: "Upgrade myapp to the latest version",
+	Short: "Upgrade easypr to the latest version",
 	Run: func(cmd *cobra.Command, args []string) {
-		// Run upgrade logic
 		performUpgrade()
 	},
 }
