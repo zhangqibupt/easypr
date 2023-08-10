@@ -33,6 +33,7 @@ func Execute() error {
 	rootCmd.AddCommand(completion)
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(upgradeCmd)
 	rootCmd.Flags().SortFlags = false
 
 	return rootCmd.Execute()
