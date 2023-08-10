@@ -10,7 +10,7 @@ import (
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 
-	"github.com/zhangqibuptse/easypr/git"
+	"github.freewheel.tv/qzhang/fwpr/git"
 )
 
 var debug = false

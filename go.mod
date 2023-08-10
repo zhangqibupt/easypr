@@ -1,4 +1,4 @@
-module github.com/zhangqibuptse/easypr
+module github.freewheel.tv/qzhang/fwpr
 
 go 1.20
 

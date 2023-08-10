@@ -1,6 +1,8 @@
 package main
 
-import "github.com/zhangqibuptse/easypr/cmd"
+import (
+	"github.freewheel.tv/qzhang/fwpr/cmd"
+)
 
 func main() {
 	cmd.Execute()

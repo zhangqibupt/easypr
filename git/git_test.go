@@ -6,7 +6,7 @@ import (
 )
 
 func TestCommitsBetween(t *testing.T) {
-	os.Chdir("/Users/qzhang/workspace/github/test_easypr")
+	os.Chdir("/Users/qzhang/workspace/github/test_fwpr")
 	got, err := CommitsBetween("feature1", "master")
 	t.Logf("CommitsBetween() got = %v", got)
 	if err != nil {
