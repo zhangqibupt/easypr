@@ -212,7 +212,7 @@ func generatePRLink(source, target string, isCherryPick bool) (string, error) {
 	}
 	baseURL := strings.Replace(out, ".git", "", 1)
 
-	labels := []string{shortName(target)}
+	labels := []string{generateLabel(target)}
 	if isCherryPick {
 		labels = append(labels, "cherry-pick")
 	}
@@ -222,6 +222,16 @@ func generatePRLink(source, target string, isCherryPick bool) (string, error) {
 		fullURL = fmt.Sprintf("%s&title=%s", fullURL, url.QueryEscape("CherryPick#"+source))
 	}
 	return fullURL, nil
+}
+
+func generateLabel(target string) string {
+	branchName := shortName(target)
+	if strings.HasPrefix(branchName, "V_") {
+		label := strings.Replace(branchName, "V_", "", 1)
+		label = strings.ReplaceAll(label, "_", ".")
+		return label
+	}
+	return branchName
 }
 
 func CommitsBetween(source, target string) ([]string, error) {

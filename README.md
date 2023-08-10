@@ -17,7 +17,7 @@ go install github.freewheel.com/qzhang/fwpr@latest
 
 ## Usage
 
-#### Case 1: Based on branch `feature1`, create a Pull Request to `master` and cherry-pick to `V_6_57` and `V_6_57_1`
+#### Case 1: I want to create a pull request to merge `feature1` into `master` branch. Meanwhile cherry-pick to `V_6_57` and `V_6_57_1`
 Just switch to `feature1` and run below command
 ```sh
 fwpr create

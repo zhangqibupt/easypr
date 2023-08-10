@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"os/exec"
 	"strings"
 
 	"github.com/manifoldco/promptui"
@@ -99,7 +100,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 		if err != nil {
 			return
 		}
-
+		var cpLinks []string
 		if len(selected) > 0 {
 			for _, target := range selected {
 				color.Yellow("Creating cherry-pick Pull Request to %s...", target)
@@ -108,11 +109,27 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 					color.Red("Failed to create cherry-pick Pull Request for branch %s, skipping...", target)
 					continue
 				}
+				cpLinks = append(cpLinks, link)
 				defer color.Cyan("Cherry-Pick PR to %s: %s", target, color.GreenString(link))
 			}
 		}
 		color.Cyan("PR to %s: %s", targetBranch, color.GreenString(targetLink))
+
+		_ = openLinks(append(cpLinks, targetLink))
 	}
+}
+
+func openLinks(url []string) error {
+	if len(url) == 0 {
+		return nil
+	}
+	cmd := exec.Command("open", url...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		color.Red("failed to open links: %s", string(output))
+		return err
+	}
+	return nil
 }
 
 func searcher(branches []string) func(input string, index int) bool {
