@@ -4,6 +4,7 @@
 
 ## Demo
 Below demo shows how to create pull requests to merge `feature1` into `master` branch. Meanwhile, cherry-pick to `V_6_57` and `V_6_57_1`
+
 https://media.github.freewheel.tv/user/347/files/2d38fa75-3cd2-4eac-bdfd-9512375664a7
 
 ## Installation
