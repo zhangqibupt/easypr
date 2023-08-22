@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Assignees []string `json:"assignees"`
+	Upstream  string   `json:"upstream"`
 }
 
 func GetConfigPath() (string, error) {

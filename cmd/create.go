@@ -98,7 +98,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 		}
 
 		color.Yellow("Creating Pull Request to %s...", targetBranch)
-		targetLink, err := lib.CreatePRLink(sourceBranch, targetBranch)
+		originalPRLink, err := lib.CreatePRLink(sourceBranch, targetBranch)
 		if err != nil {
 			return
 		}
@@ -106,7 +106,7 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 		if len(selected) > 0 {
 			for _, target := range selected {
 				color.Yellow("Creating cherry-pick Pull Request to %s...", target)
-				link, err := lib.CreateCherryPickPRLink(sourceBranch, target, commits)
+				link, err := lib.CreateCherryPickPRLink(sourceBranch, target, commits, originalPRLink)
 				if err != nil {
 					color.Red("Failed to create cherry-pick Pull Request for branch %s, skipping...", target)
 					continue
@@ -115,9 +115,9 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 				defer color.Cyan("Cherry-Pick PR to %s: %s", target, color.GreenString(link))
 			}
 		}
-		color.Cyan("PR to %s: %s", targetBranch, color.GreenString(targetLink))
+		color.Cyan("PR to %s: %s", targetBranch, color.GreenString(originalPRLink))
 
-		_ = openLinks(append(cpLinks, targetLink))
+		_ = openLinks(append(cpLinks, originalPRLink))
 	}
 }
 
