@@ -33,8 +33,8 @@ fwpr create
 It will let you choose the target branch(`master` in this case) and create a pull request to it. 
 
 Then it will let you choose multiple cherry-pick branches (`V_6_57` and `V_6_57_1` in this case), then it will 
-- Checkout two new branches `feature1_cp_to_V_6_57` and `feature1_cp_to_V_6_57_1` from `V_6_57` and `V_6_57_1` respectively
-- Cherry-pick the commits from `feature1` to `feature1_cp_to_V_6_57` and `feature1_cp_to_V_6_57_1` respectively
+- Checkout two new branches `feature1_to_V_6_57` and `feature1_to_V_6_57_1` from `V_6_57` and `V_6_57_1` respectively
+- Cherry-pick the commits from `feature1` to `feature1_to_V_6_57` and `feature1_to_V_6_57_1` respectively
 - Create two pull requests respectively
 
 ### Case 2: 
@@ -45,7 +45,7 @@ Just switch to `feature1` and run below command
 fwpr sync
 ```
 It will let you choose the target branch(`master` in this case).
-Then it will list the created cherry-pick branches and let you choose, `feature1_cp_to_V_6_57` and `feature1_cp_to_V_6_57_1` in this case. And then sync the new commits to them.
+Then it will list the created cherry-pick branches and let you choose, `feature1_to_V_6_57` and `feature1_to_V_6_57_1` in this case. And then sync the new commits to them.
 
 ## Limitations
 - Currently, when cherry-picking, if there are conflicts, you need to resolve them manually.
