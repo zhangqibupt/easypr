@@ -14,5 +14,5 @@ var versionCmd = &cobra.Command{
 }
 
 func displayVersion() {
-	color.Cyan("fwpr version: %s", "v1.0.3")
+	color.Cyan("fwpr version: %s", "v1.0.4")
 }
