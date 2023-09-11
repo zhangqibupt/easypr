@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"os/exec"
 	"strings"
@@ -36,6 +37,23 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 			return
 		}
 
+		sourceBranch, err := lib.CurrentBranch()
+		if err != nil {
+			return
+		}
+		defer func() {
+			_ = lib.Checkout(sourceBranch)
+		}()
+
+		if sourceBranch == "main" || sourceBranch == "master" {
+			color.Yellow("[Warning] Your current branch is %s, continue? (y/n)", sourceBranch)
+			var confirm string
+			fmt.Scanln(&confirm)
+			if confirm != "y" {
+				return
+			}
+		}
+
 		// Fetch remote branch list
 		color.Cyan("Fetching remote branch list")
 		originURL, err := lib.RemoteURL("origin")
@@ -64,14 +82,6 @@ func CreateRun() func(cmd *cobra.Command, args []string) {
 			color.Red("Failed to select target branch: %s", err)
 			return
 		}
-
-		sourceBranch, err := lib.CurrentBranch()
-		if err != nil {
-			return
-		}
-		defer func() {
-			_ = lib.Checkout(sourceBranch)
-		}()
 
 		commits, err := lib.CommitsBetween(sourceBranch, targetBranch)
 		if err != nil {

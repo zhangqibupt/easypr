@@ -181,14 +181,14 @@ func RecreateCPBranch(localCPBranch string, commits []string) error {
 		}
 	}
 
-	color.Cyan("Pushing %s to remote", localCPBranch)
 	return ForcePush(localCPBranch)
 }
 
 func ForcePush(branch string) error {
+	color.Cyan("Force Pushing %s to remote", branch)
 	out, err := execGit("push", "origin", "-f", fmt.Sprintf("%s:%s", branch, branch))
 	if err != nil {
-		color.Red("Push %s to remote error: %s", branch, out)
+		color.Red("Force Push %s to remote error: %s", branch, out)
 		return err
 	}
 	return nil
