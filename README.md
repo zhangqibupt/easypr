@@ -21,7 +21,10 @@ fwpr create
 fwpr sync
 
 # set default assignees for Pull Requests
-fwpr config set-assignees <ldap1> <ldap2> 
+fwpr config set-assignees <ldap1> <ldap2>
+
+# set upstream repo, it is useful when your repo is forked
+fwpr config set-upstream <repo>
 ```
 ### Case 1:
 > I want to create a pull request to merge `feature1` into `master` branch. Meanwhile cherry-pick to `V_6_57` and `V_6_57_1`
@@ -46,6 +49,13 @@ fwpr sync
 ```
 It will let you choose the target branch(`master` in this case).
 Then it will list the created cherry-pick branches and let you choose, `feature1_to_V_6_57` and `feature1_to_V_6_57_1` in this case. And then sync the new commits to them.
+
+## Note
+1. If your repo is forked, you want to create PR to the original upstream, please use `fwpr config set-upstream` to set the upstream. 
+
+Take `core/common` as example, you need to run
+`fwpr config set-upstream https://github.freewheel.tv/core/common.git`
+
 
 ## Limitations
 - Currently, when cherry-picking, if there are conflicts, you need to resolve them manually.
