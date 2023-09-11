@@ -40,6 +40,7 @@ func Execute() error {
 	rootCmd.AddCommand(syncCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(upgradeCmd)
+	rootCmd.AddCommand(versionCmd)
 
 	return rootCmd.Execute()
 }

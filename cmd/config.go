@@ -9,12 +9,12 @@ import (
 
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "set the default config for pull request, such as assignees",
+	Short: "Set the default config for pull request, such as assignees",
 }
 
 var setAssigneeCmd = &cobra.Command{
 	Use:   "set-assignees [name1 name2...]",
-	Short: "set assignees for pull request",
+	Short: "Set assignees for pull request",
 	Run: func(cmd *cobra.Command, args []string) {
 		config := lib.Config{
 			Assignees: args,
@@ -30,7 +30,7 @@ var setAssigneeCmd = &cobra.Command{
 
 var setUpstreamCmd = &cobra.Command{
 	Use:   "set-upstream [repo]",
-	Short: "specify the target repo of the pull request, it is useful when the repo is forked and you want to create pull request to the original repo",
+	Short: "Specify the target repo of the pull request, it is useful when the repo is forked and you want to create pull request to the original repo",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
 			color.Red("Please specify the upstream repo")
@@ -65,7 +65,7 @@ func isValidGitHubRepoURL(url string) bool {
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "list config for pull request",
+	Short: "List config for pull request",
 	Run: func(cmd *cobra.Command, args []string) {
 		config, err := lib.LoadConfig()
 		if err != nil {
