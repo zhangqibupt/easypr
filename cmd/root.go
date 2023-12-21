@@ -12,7 +12,7 @@ var (
 		Long: `fwpr is a tool to create multiple Pull Requests based on current branch to make Cherry-picking easy.
 
 Get more details from https://github.freewheel.tv/qzhang/fwpr
-Join our slack channel to submit issues and get supported #fw-useful-tools https://freewheel.slack.com/archives/C05NA6TPM2R
+Join our slack channel to submit issues and get supported #kof-user-group https://freewheel.slack.com/archives/C05M8MQNMQQ
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if debug {
@@ -41,6 +41,9 @@ func Execute() error {
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(upgradeCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(reviewCmd)
+
+	// add command to show PR links
 
 	return rootCmd.Execute()
 }

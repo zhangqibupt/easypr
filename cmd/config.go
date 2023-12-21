@@ -16,10 +16,10 @@ var setAssigneeCmd = &cobra.Command{
 	Use:   "set-assignees [name1 name2...]",
 	Short: "Set assignees for pull request",
 	Run: func(cmd *cobra.Command, args []string) {
-		config := lib.Config{
+		config := lib.RepoConfig{
 			Assignees: args,
 		}
-		err := lib.SaveConfig(&config)
+		err := lib.SaveRepoConfig(&config)
 		if err != nil {
 			color.Red("Failed to save config: %s", err)
 			return
@@ -42,18 +42,51 @@ var setUpstreamCmd = &cobra.Command{
 			return
 		}
 
-		config, _ := lib.LoadConfig()
+		config, _ := lib.LoadRepoConfig()
 		if config == nil {
-			config = &lib.Config{}
+			config = &lib.RepoConfig{}
 		}
 		config.Upstream = args[0]
 
-		err := lib.SaveConfig(config)
+		err := lib.SaveRepoConfig(config)
 		if err != nil {
 			color.Red("Failed to save config: %s", err)
 			return
 		}
 		color.Green("Successfully set upstream for current repo")
+	},
+}
+
+var setAccessTokenCmd = &cobra.Command{
+	Use:   "set-access-token [token]",
+	Short: "Set the access token for authenticating with GitHub API",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) != 1 {
+			color.Red("Please specify the access token")
+			return
+		}
+
+		// Add additional validation for the access token if needed
+
+		config, err := lib.LoadGlobalConfig()
+		if err != nil {
+			color.Red("Failed to load config: %s", err)
+			return
+		}
+
+		if config == nil {
+			config = &lib.GlobalConfig{}
+		}
+
+		config.GithubAccessToken = args[0]
+
+		err = lib.SaveGlobalConfig(config)
+		if err != nil {
+			color.Red("Failed to save config: %s", err)
+			return
+		}
+
+		color.Green("Successfully set access token")
 	},
 }
 
@@ -67,7 +100,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List config for pull request",
 	Run: func(cmd *cobra.Command, args []string) {
-		config, err := lib.LoadConfig()
+		config, err := lib.LoadRepoConfig()
 		if err != nil {
 			color.Red("Failed to load config: %s", err)
 			return
@@ -86,5 +119,6 @@ var listCmd = &cobra.Command{
 func init() {
 	configCmd.AddCommand(setAssigneeCmd)
 	configCmd.AddCommand(setUpstreamCmd)
+	configCmd.AddCommand(setAccessTokenCmd)
 	configCmd.AddCommand(listCmd)
 }

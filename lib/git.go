@@ -209,7 +209,7 @@ func generatePRLink(source, target string, orignalPRLink string) (string, error)
 
 	targetRepo := originalRepo
 	forked := false
-	config, _ := LoadConfig()
+	config, _ := LoadRepoConfig()
 	if config != nil && config.Upstream != "" {
 		forked = true
 		targetRepo = config.Upstream
@@ -255,7 +255,7 @@ func extractRepoNameFromURL(url string) string {
 }
 
 func fillInAssignees(fullURL string) string {
-	c, _ := LoadConfig()
+	c, _ := LoadRepoConfig()
 	if c == nil || len(c.Assignees) == 0 {
 		return fullURL
 	}

@@ -5,17 +5,23 @@ import (
 	"github.com/fatih/color"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 )
 
-type GlobalConfig struct {
-	GithubAccessToken  string `json:"github_access_token"`
-	AWSAccessKeyID     string `json:"aws_access_key_id"`
-	AWSSecretAccessKey string `json:"aws_secret_access_key"`
+type RepoConfig struct {
+	Assignees []string `json:"assignees"`
+	Upstream  string   `json:"upstream"`
 }
 
-func LoadGlobalConfig() (*GlobalConfig, error) {
-	path, err := getGlobalConfigPath()
+func GetRepoConfigPath() (string, error) {
+	gitDirectory, err := TopLevelDirectory()
+	if err != nil {
+		return "", err
+	}
+	return gitDirectory + "/.git/.fwpr_config.json", nil
+}
+
+func LoadRepoConfig() (*RepoConfig, error) {
+	path, err := GetRepoConfigPath()
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +39,7 @@ func LoadGlobalConfig() (*GlobalConfig, error) {
 		return nil, err
 	}
 
-	var config GlobalConfig
+	var config RepoConfig
 	err = json.Unmarshal(data, &config)
 	if err != nil {
 		if debug {
@@ -44,15 +50,7 @@ func LoadGlobalConfig() (*GlobalConfig, error) {
 	return &config, nil
 }
 
-func getGlobalConfigPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".fwpr_config.json"), nil
-}
-
-func SaveGlobalConfig(config *GlobalConfig) error {
+func SaveRepoConfig(config *RepoConfig) error {
 	data, err := json.Marshal(config)
 	if err != nil {
 		if debug {
@@ -61,9 +59,24 @@ func SaveGlobalConfig(config *GlobalConfig) error {
 		return err
 	}
 
-	path, err := getGlobalConfigPath()
+	path, err := GetRepoConfigPath()
 	if err != nil {
 		return err
+	}
+
+	_, err = os.Stat(path)
+	fileExists := !os.IsNotExist(err)
+
+	// If the file doesn't exist, create it
+	if !fileExists {
+		file, err := os.Create(path)
+		if err != nil {
+			if debug {
+				color.Red("Failed to create config file: %s", err)
+			}
+			return err
+		}
+		defer file.Close()
 	}
 
 	err = ioutil.WriteFile(path, data, 0644)

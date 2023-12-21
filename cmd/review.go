@@ -1,0 +1,500 @@
+package cmd
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/fatih/color"
+	"github.com/google/go-github/v57/github"
+	"github.com/samber/lo"
+	"github.com/sourcegraph/go-diff/diff"
+	"github.com/spf13/cobra"
+	"github.freewheel.tv/qzhang/fwpr/lib"
+	"golang.org/x/oauth2"
+	"golang.org/x/sync/errgroup"
+	"regexp"
+	"strings"
+	"time"
+)
+
+var reviewCmd = &cobra.Command{
+	Use:     "review [pull request link]",
+	Short:   "Review pull requests with the power of AI model",
+	Aliases: []string{"r"},
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) != 1 {
+			color.Red("Please specify the pull request link, e.g. https://github.freewheel.tv/qzhang/fwpr/pull/1")
+			return
+		}
+		performReview(args[0])
+	},
+}
+
+func performReview(prLink string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	owner, repo, pullNumber, err := parseGitHubURL(prLink)
+	if err != nil {
+		color.Red("Failed to parse GitHub URL: %s", err)
+		return
+	}
+
+	if err := initClient(ctx); err != nil {
+		color.Red("Failed to init GitHub client: %s", err)
+		return
+	}
+
+	pull, _, err := client.PullRequests.Get(ctx, owner, repo, pullNumber)
+	if err != nil {
+		color.Red("Failed to get pull request: %s", err)
+		return
+	}
+
+	changedFiles, err := getCommitFiles(ctx, owner, repo, pullNumber)
+	if err != nil {
+		color.Red("Failed to get pull request files and diff: %s", err)
+		return
+	}
+
+	if err := generateComments(ctx, owner, repo, pull, changedFiles); err != nil {
+		color.Red("Failed to generate comments: %s", err)
+		return
+	}
+
+	color.Green("successfully, opening pull request page to check the comments")
+	_ = openLinks([]string{prLink + "/files"})
+}
+
+const commentTemplate = `%s
+
+> 🤖AI Generated`
+
+const changeTypeAdd = "added"
+const changeTypeModify = "modified"
+const changeTypeRemove = "removed"
+const changeTypeRename = "renamed"
+const changeTypeCopy = "copied"
+const changeTypeChange = "changed"
+const changeTypeUnchanged = "unchanged"
+
+const baseURL = "https://github.freewheel.tv/api/v3/"
+
+const concurrency = 10
+
+var changeTypeWhiteList = []string{
+	changeTypeAdd,
+	changeTypeModify,
+}
+
+var excludeFileList = []string{
+	"package-lock.json",
+	"package.json",
+	"yarn.lock",
+	"package-lock.json",
+	"_test.go",
+	"pb.go",
+	"pb.gw.go",
+	".swagger.json",
+}
+
+func getCommitFiles(ctx context.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error) {
+	var allFiles []*github.CommitFile
+	page := 1
+
+	for {
+		// Get the pull request files for the current page
+		files, resp, err := client.PullRequests.ListFiles(ctx, owner, repo, pullNumber, &github.ListOptions{
+			PerPage: 100, // Adjust the per-page value as needed
+			Page:    page,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// Append the files to the result
+		allFiles = append(allFiles, files...)
+
+		// Check if there are more pages
+		if resp.NextPage == 0 {
+			break
+		}
+
+		// Move to the next page
+		page = resp.NextPage
+	}
+
+	return lo.Filter(allFiles, func(file *github.CommitFile, _ int) bool {
+		// only care about added and modified files
+		if !lo.Contains(changeTypeWhiteList, *file.Status) {
+			color.Yellow("Skip file %s with change type %s", *file.Filename, *file.Status)
+			return false
+		}
+
+		// exclude some files that we don't want to review
+		for _, excludeFile := range excludeFileList {
+			if strings.HasSuffix(*file.Filename, excludeFile) {
+				color.Yellow("Skip file %s according to the exclude list", *file.Filename)
+				return false
+			}
+		}
+		return true
+	}), nil
+}
+
+var client *github.Client
+
+func initClient(ctx context.Context) error {
+	if client != nil {
+		return nil
+	}
+
+	config, err := lib.LoadGlobalConfig()
+	if err != nil {
+		color.Red("Failed to load config: %s", err)
+		return err
+	}
+
+	if config == nil || len(config.GithubAccessToken) == 0 {
+		color.Red("Please set access token first")
+		return err
+	}
+
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: config.GithubAccessToken},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	newClient, err := github.NewClient(tc).WithEnterpriseURLs(baseURL, baseURL)
+	if err != nil {
+		color.Red("Failed to create github client: %s", err)
+		return err
+	}
+
+	client = newClient
+	return nil
+}
+
+func getFileDiffs(ctx context.Context, owner, repo string, pullNumber int) (map[string]*diff.FileDiff, error) {
+	rawDiff, _, err := client.PullRequests.GetRaw(ctx, owner, repo, pullNumber, github.RawOptions{Type: github.Diff})
+	if err != nil {
+		return nil, err
+	}
+
+	fileDiffs, err := diff.ParseMultiFileDiff([]byte(rawDiff))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse file diff: %w", err)
+	}
+
+	return lo.SliceToMap(fileDiffs, func(diff *diff.FileDiff) (string, *diff.FileDiff) {
+		return strings.TrimPrefix(diff.NewName, "b/"), diff
+	}), nil
+
+}
+
+func generateComments(ctx context.Context, owner, repo string, pull *github.PullRequest, changes []*github.CommitFile) error {
+	// get patch file of pull request
+	fileDiffs, err := getFileDiffs(ctx, owner, repo, *pull.Number)
+	if err != nil {
+		color.Red("Failed to get PR patch file: %s", err)
+		return err
+	}
+
+	// convert changes to chan
+	changesChan := make(chan *github.CommitFile, len(changes))
+	for _, c := range changes {
+		changesChan <- c
+	}
+	close(changesChan)
+
+	var draftComments []*github.DraftReviewComment
+
+	var eg errgroup.Group
+	lo.Times(concurrency, func(i int) error {
+		eg.Go(func() error {
+			for {
+				change, ok := <-changesChan
+				if !ok {
+					return nil
+				}
+
+				var originalFileContent string
+				if *change.Status != changeTypeAdd {
+					c, err := getOrignalFileContent(ctx, owner, repo, pull, change)
+					if err != nil {
+						return err
+					}
+
+					// Skip auto generated files
+					if isAutoGenerated(c) {
+						color.Yellow("Skip auto generated file: %s", *change.Filename)
+						continue
+					}
+					originalFileContent = c
+				}
+
+				prompt, err := constructPrompt(change, originalFileContent)
+				if err != nil {
+					return err
+				}
+
+				resp, err := lib.SendBedrock(ctx, prompt)
+				if err != nil {
+					return err
+				}
+				draftComments = append(draftComments, constructGitDraftComments(resp, change, fileDiffs)...)
+			}
+		})
+		return nil
+	})
+	if err := eg.Wait(); err != nil {
+		color.Red("Failed to generate comments: %s", err)
+		return err
+	}
+
+	if len(draftComments) == 0 {
+		color.Green("No issues identified.")
+		return nil
+	}
+	// List only your pending reviews on the pull request
+	if err := deletePreviousPendingReview(ctx, owner, repo, *pull.Number); err != nil {
+		return err
+	}
+
+	comment := &github.PullRequestReviewRequest{
+		CommitID: github.String(pull.Head.GetSHA()),
+		Comments: draftComments,
+	}
+
+	_, _, err = client.PullRequests.CreateReview(context.Background(), owner, repo, *pull.Number, comment)
+	if err != nil {
+		color.Red("Failed to create review: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func findPosition(c *Comment, fileDiff *diff.FileDiff) int {
+	var position int // reset position since it's file specific
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range strings.Split(string(hunk.Body), "\n") {
+			position++
+
+			if strings.Contains(line, c.Code) {
+				return position
+			}
+		}
+	}
+	return -1
+}
+
+func countLines(fileDiff *diff.FileDiff) int {
+	var position int // reset position since it's file specific
+
+	for _, hunk := range fileDiff.Hunks {
+		position += strings.Count(string(hunk.Body), "\n") + 1
+	}
+	return position
+}
+
+func deletePreviousPendingReview(ctx context.Context, owner string, repo string, pullRequestNumber int) error {
+	reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, pullRequestNumber, nil)
+	if err != nil {
+		color.Red("Failed to list reviews: %s", err)
+		return err
+	}
+
+	// Print details of your pending reviews
+	var pendingReview *github.PullRequestReview
+	for _, review := range reviews {
+		// Check if the review is pending (state "PENDING")
+		if *review.State == "PENDING" {
+			pendingReview = review
+		}
+	}
+
+	// delete pending review
+	if pendingReview != nil {
+		color.Yellow("Found previous pending review, deleting it")
+		// Dismiss the review
+		_, _, err := client.PullRequests.DeletePendingReview(ctx, owner, repo, pullRequestNumber, *pendingReview.ID)
+		if err != nil {
+			color.Red("Failed to delete review: %s", err)
+			return err
+		}
+	}
+	return nil
+}
+
+type Comment struct {
+	Line    int    `json:"line"`
+	Code    string `json:"code"`
+	Comment string `json:"comment"`
+}
+
+func constructGitDraftComments(resp string, change *github.CommitFile, fileDiffs map[string]*diff.FileDiff) []*github.DraftReviewComment {
+	rawComments := constructCommentsFromResp(resp)
+	color.Green("Found %d comments for %s", len(rawComments), *change.Filename)
+
+	if len(rawComments) == 0 {
+		return []*github.DraftReviewComment{}
+	}
+
+	var comments []*github.DraftReviewComment
+	var commentsWithoutLineNumber []*Comment
+
+	fileDiff, ok := fileDiffs[*change.Filename]
+	if !ok {
+		color.Yellow("Failed to find file diff for %s", *change.Filename)
+		return []*github.DraftReviewComment{}
+	}
+
+	for _, c := range rawComments {
+		position := findPosition(c, fileDiff)
+
+		if position != -1 {
+			comments = append(comments, &github.DraftReviewComment{
+				Path:     github.String(*change.Filename),
+				Body:     github.String(fmt.Sprintf(commentTemplate, c.Comment)),
+				Position: github.Int(position),
+			})
+		} else {
+			commentsWithoutLineNumber = append(commentsWithoutLineNumber, c)
+		}
+	}
+
+	// combine all the comments into one
+	if len(commentsWithoutLineNumber) > 0 {
+		commentStringSlice := lo.Map(commentsWithoutLineNumber, func(c *Comment, i int) string {
+			return fmt.Sprintf("%d. `%s` %s", i+1, c.Code, c.Comment)
+		})
+
+		comments = append(comments, &github.DraftReviewComment{
+			Path:     github.String(*change.Filename),
+			Body:     github.String(fmt.Sprintf(commentTemplate, strings.Join(commentStringSlice, "\n"))),
+			Position: github.Int(countLines(fileDiff) - 1),
+		})
+	}
+	return comments
+}
+
+func constructCommentsFromResp(resp string) []*Comment {
+	// Extract JSON part from the string
+	start := strings.Index(resp, "[")
+	end := strings.LastIndex(resp, "]")
+	if start == -1 || end == -1 {
+		return []*Comment{}
+	}
+	jsonStr := resp[start : end+1]
+	// remove \n
+	jsonStr = strings.ReplaceAll(jsonStr, "\n", "")
+
+	var result []*Comment
+	err := json.Unmarshal([]byte(jsonStr), &result)
+	if err != nil {
+		color.Yellow("Failed to parse JSON %s, err=%s", resp, err.Error())
+	}
+	return result
+}
+
+const modifyPrompt = "You are acting as a github code reviwer. " +
+	"You will be given the original code and a patch file." +
+	"The original code is wrapped in <Code> tag, the patch file is wrapped in <Patch> tag." +
+	"You need to review the patch file, identify serious issues such as code smells, anti-patterns, potential bugs, performance bottlenecks, and security vulnerabilities. " +
+	"You should give suggestions only when there is serious issue in new added lines in patch file." +
+	"The suggestions must be actionable, brief and specific, give an code example if needed. Do not make any general comments." +
+	`You can only respond one and only one trimmed JSON object, with all the comments inside it. The JSON is in format [{"line":number,"code":string,"comment"":string}].` +
+	//"The 'line' field represents the index in the patch file where the line, to which the comment applies, is found. It should not exceed the total line count of the patch file." +
+	"The 'code' field represents the content of code that the comment is associated to." +
+	"The 'comment' field represents the comment. " +
+	"If there is no serious issues, just return '[]'" +
+	"Now, I am giving you the original code as follows:\n\n" +
+	"<Code>\n\n%s\n\n</Code>\n\n" +
+	"The patch file is as follows:\n\n" +
+	"<Patch>\n\n%s\n\n</Patch>\n" +
+	"Now, return and only return the JSON object to me."
+
+//"Now answer in JSON format, don't explain anything."
+
+const addPrompt = "You are acting as a github code reviwer. " +
+	"You will be given a patch file." +
+	"The patch file is wrapped in <Patch> tag." +
+	"You need to review the patch file, identify serious issues such as code smells, anti-patterns, potential bugs, performance bottlenecks, and security vulnerabilities. " +
+	"You need to give brief and specific suggestions about how to improve the code on the patch file only when there is serious issue. Do not make any meaningless praise, explaination or comments." +
+	`You can only respond one and only one JSON object, with all the comments inside it. The JSON is in format [{"line":number,"code":string,"comment"":string}].` +
+	"The 'line' field represents the index in the patch file where the line, to which the comment applies, is found. It should not exceed the total line count of the patch file." +
+	"The 'code' field represents the content of code that the comment is associated to." +
+	"The 'comment' field represents the comment. " +
+	"If there is no serious issues, just return '[]'" +
+	"Now, I am giving you the patch file as follows:\n\n" +
+	"<Patch>\n\n%s\n\n</Patch>\n" +
+	"Now, return and only return the JSON object to me."
+
+//"Now answer in JSON format, don't explain anything."
+
+func isAutoGenerated(input string) bool {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+
+	if scanner.Scan() {
+		firstLine := scanner.Text()
+		return strings.Contains(strings.ToLower(firstLine), "generated by")
+	}
+
+	return false
+}
+
+func constructPrompt(file *github.CommitFile, fileContent string) (string, error) {
+	if *file.Status == changeTypeAdd {
+		return fmt.Sprintf(addPrompt, *file.Patch), nil
+	} else if *file.Status == changeTypeModify {
+		return fmt.Sprintf(modifyPrompt, fileContent, *file.Patch), nil
+	} else {
+		color.Red("Unsupported change type: %s", *file.Status)
+		return "", fmt.Errorf("unsupported change type: %s", *file.Status)
+	}
+}
+
+func getOrignalFileContent(ctx context.Context, owner string, repo string, pull *github.PullRequest, file *github.CommitFile) (string, error) {
+	content, _, _, err := client.Repositories.GetContents(ctx, owner, repo, *file.Filename, &github.RepositoryContentGetOptions{Ref: pull.Base.GetRef()})
+	if err != nil {
+		color.Red("Failed to get file content: %s", err)
+		return "", err
+	}
+
+	c, err := content.GetContent()
+	if err != nil {
+		color.Red("Failed to get file content: %s", err)
+		return "", err
+	}
+	return c, nil
+}
+
+func parseGitHubURL(url string) (owner, repo string, prNumber int, err error) {
+	// Define the regular expression pattern for the GitHub pull request URL
+	regexPattern := `^https:\/\/github\.freewheel\.tv\/([^\/]+)\/([^\/]+)\/pull\/(\d+)$`
+
+	// Compile the regular expression
+	regex := regexp.MustCompile(regexPattern)
+
+	// Find matches in the URL
+	matches := regex.FindStringSubmatch(url)
+
+	// Check if there are enough matches
+	if len(matches) != 4 {
+		return "", "", 0, fmt.Errorf("invalid GitHub pull request URL")
+	}
+
+	return matches[1], matches[2], atoi(matches[3]), nil
+}
+
+func atoi(s string) int {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	if err != nil {
+		return 0
+	}
+	return result
+}
