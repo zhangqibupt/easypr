@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fwpr/internal/logger"
+	"fwpr/lib"
+
 	"github.com/spf13/cobra"
-	"github.freewheel.tv/qzhang/fwpr/lib"
 )
 
 var (
@@ -11,7 +13,7 @@ var (
 		Short: "A tool to make Pull Requests and Cherry-picking easy.",
 		Long: `fwpr is a tool to create multiple Pull Requests based on current branch to make Cherry-picking easy.
 
-Get more details from https://github.freewheel.tv/qzhang/fwpr
+Get more details from https://fwpr
 Join our slack channel to submit issues and get supported #kof-user-group https://freewheel.slack.com/archives/C05M8MQNMQQ
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -20,6 +22,7 @@ Join our slack channel to submit issues and get supported #kof-user-group https:
 			}
 		},
 	}
+	log = logger.GetLogger() // Global logger
 )
 
 func init() {

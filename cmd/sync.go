@@ -1,14 +1,15 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"strings"
+
+	"github.com/spf13/cobra"
 
 	"github.com/manifoldco/promptui"
 
 	"github.com/fatih/color"
 
-	"github.freewheel.tv/qzhang/fwpr/lib"
+	"fwpr/lib"
 )
 
 var syncCmd = &cobra.Command{

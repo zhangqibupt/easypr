@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os/exec"
 	"strings"
+
+	"github.com/spf13/cobra"
 
 	"github.com/manifoldco/promptui"
 
@@ -12,7 +13,7 @@ import (
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 
-	"github.freewheel.tv/qzhang/fwpr/lib"
+	"fwpr/lib"
 )
 
 var debug = false

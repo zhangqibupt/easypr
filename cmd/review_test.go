@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"context"
+	"testing"
+
 	"github.com/fatih/color"
 	"github.com/google/go-github/v57/github"
-	"log"
-	"testing"
 )
 
 func Test_CreateComments(t *testing.T) {

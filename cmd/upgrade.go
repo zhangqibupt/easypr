@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"os/exec"
+
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"os/exec"
 )
 
 var upgradeCmd = &cobra.Command{
@@ -16,8 +17,8 @@ var upgradeCmd = &cobra.Command{
 }
 
 func performUpgrade() {
-	cmd := exec.Command("go", "install", "github.freewheel.tv/qzhang/fwpr@latest")
-	color.Cyan("Upgrading fwpr to the latest version by 'go install github.freewheel.tv/qzhang/fwpr@latest'")
+	cmd := exec.Command("go", "install", "fwpr@latest")
+	color.Cyan("Upgrading fwpr to the latest version by 'go install fwpr@latest'")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		color.Red("Failed to upgrade due to:%s", output)

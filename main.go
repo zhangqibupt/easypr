@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.freewheel.tv/qzhang/fwpr/cmd"
+	"fwpr/cmd"
 )
 
 func main() {

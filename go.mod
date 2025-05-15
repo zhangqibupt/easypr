@@ -1,4 +1,4 @@
-module github.freewheel.tv/qzhang/fwpr
+module fwpr
 
 go 1.20
 
@@ -11,6 +11,7 @@ require (
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/manifoldco/promptui v0.9.0
 	github.com/samber/lo v1.39.0
+	github.com/sirupsen/logrus v1.9.3
 	github.com/sourcegraph/go-diff v0.7.0
 	github.com/spf13/cobra v1.7.0
 	golang.org/x/oauth2 v0.15.0
