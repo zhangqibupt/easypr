@@ -1,10 +1,10 @@
 package copilot
 
 import (
+	"easypr/internal/logger"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"fwpr/internal/logger"
 	"io/ioutil"
 	"net/http"
 	"strings"

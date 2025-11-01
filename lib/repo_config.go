@@ -17,7 +17,7 @@ func GetRepoConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return gitDirectory + "/.git/.fwpr_config.json", nil
+	return gitDirectory + "/.git/.easypr_config.json", nil
 }
 
 func LoadRepoConfig() (*RepoConfig, error) {

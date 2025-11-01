@@ -1,4 +1,4 @@
-module fwpr
+module easypr
 
 go 1.20
 

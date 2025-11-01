@@ -1,19 +1,19 @@
 package cmd
 
 import (
-	"fwpr/internal/logger"
-	"fwpr/lib"
+	"easypr/internal/logger"
+	"easypr/lib"
 
 	"github.com/spf13/cobra"
 )
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "fwpr",
+		Use:   "easypr",
 		Short: "A tool to make Pull Requests and Cherry-picking easy.",
-		Long: `fwpr is a tool to create multiple Pull Requests based on current branch to make Cherry-picking easy.
+		Long: `easypr is a tool to create multiple Pull Requests based on current branch to make Cherry-picking easy.
 
-Get more details from https://fwpr
+Get more details from https://easypr
 Join our slack channel to submit issues and get supported #kof-user-group https://freewheel.slack.com/archives/C05M8MQNMQQ
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {

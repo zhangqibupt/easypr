@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"fwpr/lib"
+	"easypr/lib"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -174,7 +174,7 @@ var configUseCmd = &cobra.Command{
 
 		fmt.Printf("Config updated: model set to %s\n", model)
 		if config.Model == modelCopilot && config.CopilotToken == "" {
-			log.Warn("Copilot token is not set. You must init the Copilot token manually before using it. Please run `fwpr config copilot init-token` and follow the instructions.")
+			log.Warn("Copilot token is not set. You must init the Copilot token manually before using it. Please run `easypr config copilot init-token` and follow the instructions.")
 		}
 	},
 }
@@ -208,7 +208,7 @@ func getConfigPath() string {
 		fmt.Printf("Error getting user home directory: %v\n", err)
 		return ""
 	}
-	return filepath.Join(homeDir, ".fwpr", "config.json")
+	return filepath.Join(homeDir, ".easypr", "config.json")
 }
 
 func saveConfig(config *Config) error {
