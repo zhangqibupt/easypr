@@ -49,7 +49,7 @@ func getGlobalConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".fwpr_config.json"), nil
+	return filepath.Join(home, ".easypr_config.json"), nil
 }
 
 func SaveGlobalConfig(config *GlobalConfig) error {

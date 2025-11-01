@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fwpr/cmd"
+	"easypr/cmd"
 )
 
 func main() {

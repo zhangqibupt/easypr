@@ -9,7 +9,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"fwpr/lib"
+	"easypr/lib"
 )
 
 var syncCmd = &cobra.Command{
@@ -107,7 +107,7 @@ func SyncRun() func(cmd *cobra.Command, args []string) {
 		}
 
 		if len(cherryPickBranches) == 0 {
-			color.Yellow("No local cherry-pick branches found, make sure you have created cherry-pick Pull Requests through 'fwpr create' command, exiting...")
+			color.Yellow("No local cherry-pick branches found, make sure you have created cherry-pick Pull Requests through 'easypr create' command, exiting...")
 			return
 		}
 

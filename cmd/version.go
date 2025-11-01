@@ -7,12 +7,12 @@ import (
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Display fwpr version",
+	Short: "Display easypr version",
 	Run: func(cmd *cobra.Command, args []string) {
 		displayVersion()
 	},
 }
 
 func displayVersion() {
-	color.Cyan("fwpr version: %s", "v1.0.4")
+	color.Cyan("easypr version: %s", "v1.0.4")
 }
