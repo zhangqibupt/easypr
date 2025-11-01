@@ -1,4 +1,4 @@
-module easypr
+module github.com/zhangqibupt/easypr
 
 go 1.20
 

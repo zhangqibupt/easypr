@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"easypr/internal/twinkle"
-	"easypr/lib"
+	"github.com/zhangqibupt/easypr/internal/twinkle"
+	"github.com/zhangqibupt/easypr/lib"
 
 	"github.com/google/go-github/v57/github"
 	"github.com/samber/lo"
