@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"easypr/internal/logger"
-	"easypr/lib"
+	"github.com/zhangqibupt/easypr/internal/logger"
+	"github.com/zhangqibupt/easypr/lib"
 
 	"github.com/spf13/cobra"
 )

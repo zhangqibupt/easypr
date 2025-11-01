@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"easypr/internal/copilot"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/zhangqibupt/easypr/internal/copilot"
 	"io/ioutil"
 	"net/http"
 	"strings"

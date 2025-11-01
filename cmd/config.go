@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"easypr/lib"
+	"github.com/zhangqibupt/easypr/lib"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"

@@ -13,7 +13,7 @@ import (
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 
-	"easypr/lib"
+	"github.com/zhangqibupt/easypr/lib"
 )
 
 var debug = false

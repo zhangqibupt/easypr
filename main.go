@@ -1,7 +1,7 @@
 package main
 
 import (
-	"easypr/cmd"
+	"github.com/zhangqibupt/easypr/cmd"
 )
 
 func main() {

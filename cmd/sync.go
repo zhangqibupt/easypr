@@ -9,7 +9,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"easypr/lib"
+	"github.com/zhangqibupt/easypr/lib"
 )
 
 var syncCmd = &cobra.Command{
